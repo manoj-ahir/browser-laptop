@@ -11,10 +11,8 @@ const appStoreRenderer = require('../stores/appStoreRenderer')
 const windowActions = require('../actions/windowActions')
 const appActions = require('../actions/appActions')
 const Main = require('./main')
-const SiteTags = require('../constants/siteTags')
 const cx = require('../lib/classSet')
 const {getPlatformStyles} = require('../../app/common/lib/platformUtil')
-const {siteSort} = require('../state/siteUtil')
 
 class Window extends React.Component {
   constructor (props) {
@@ -109,35 +107,35 @@ class Window extends React.Component {
     if (!this.props.includePinnedSites) {
       return
     }
-
-    const sites = this.appState.get('sites')
+    let pinnedTabs = this.appState.get('tabs').filter((tab) => tab.get('pinned'))
     const frames = this.windowState.get('frames')
 
     // Check for new pinned sites which we don't already know about
-    const sitesToAdd = sites
-      .filter((site) => {
-        return site.get('tags').includes(SiteTags.PINNED) &&
-          !frames.find((frame) => frame.get('pinnedLocation') &&
+    pinnedTabs = pinnedTabs
+      .filter((pinnedTab) => {
+        return !frames.find((frame) => frame.get('pinnedLocation') &&
             // Compare to the original src of the pinned frame
-            frame.get('pinnedLocation') === site.get('location') &&
-            (frame.get('partitionNumber') || 0) === (site.get('partitionNumber') || 0))
+            frame.get('pinnedLocation') === pinnedTab.get('url') &&
+            (frame.get('partitionNumber') || 0) === (pinnedTab.get('partition') || 0))
       })
-    sitesToAdd.sort(siteSort).forEach((site) => {
-      appActions.tabCreateRequested({
-        url: site.get('location'),
-        partitionNumber: site.get('partitionNumber'),
-        isPinned: true,
-        active: false
-      })
+    pinnedTabs.forEach((pinnedTab) => {
+      windowActions.newFrame({
+        location: pinnedTab.get('url'),
+        partitionNumber: pinnedTab.get('partition'),
+        guestInstanceId: pinnedTab.get('guestInstanceId'),
+        isPinned: true
+      }, false)
     })
 
+    /*
     // Check for unpinned sites which should be closed
     const framesToClose = frames.filter((frame) =>
       frame.get('pinnedLocation') &&
       // Compare to the original src of the pinned frame
-      !sites.find((site) => frame.get('pinnedLocation') === site.get('location') &&
-        (frame.get('partitionNumber') || 0) === (site.get('partitionNumber') || 0) && site.get('tags').includes(SiteTags.PINNED)))
+      !pinnedTabs.find((pinnedTab) => frame.get('pinnedLocation') === pinnedTab.get('url') &&
+        (frame.get('partitionNumber') || 0) === (pinnedTab.get('partition') || 0)))
     framesToClose.forEach((frameProps) => windowActions.closeFrame(frames, frameProps, true))
+    */
   }
 }
 Window.propTypes = { appState: React.PropTypes.object, frames: React.PropTypes.array, initWindowState: React.PropTypes.object }
