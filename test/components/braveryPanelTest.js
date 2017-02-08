@@ -4,6 +4,7 @@ const Brave = require('../lib/brave')
 const messages = require('../../js/constants/messages')
 const {urlInput, braveMenu, braveMenuDisabled, adsBlockedStat, adsBlockedControl, showAdsOption, blockAdsOption, braveryPanel, httpsEverywhereStat, noScriptStat, noScriptSwitch, fpSwitch, fpStat, noScriptNavButton} = require('../lib/selectors')
 const {getTargetAboutUrl} = require('../../js/lib/appUrlUtil')
+const assert = require('assert')
 
 describe('Bravery Panel', function () {
   function * setup (client) {
@@ -267,6 +268,56 @@ describe('Bravery Panel', function () {
         .waitForVisible(blockAdsOption)
         .click(blockAdsOption)
         .waitForTextValue(adsBlockedStat, '2')
+    })
+    it('blocks websocket tracking', function * () {
+      const url = Brave.server.url('websockets.html')
+      let time1 = 0
+      let time2 = 0
+      yield this.app.client
+        .waitForDataFile('adblock')
+        .tabByIndex(0)
+        .loadUrl(url)
+        .waitUntil(function () {
+          return this.getText('#result')
+            .then((result) => {
+              return result === 'success'
+            })
+        })
+        .waitUntil(function () {
+          // The connection to the websocket URL is blocked by adblock, so
+          // onerror fires quickly
+          return this.getText('#errorTime')
+            .then((time) => {
+              time = Number(time)
+              if (time > 0) {
+                time1 = time
+                return true
+              }
+              return false
+            })
+        })
+        // TODO: Show websocket URLs in Bravery Stats
+        .openBraveMenu(braveMenu, braveryPanel)
+        .click(adsBlockedControl)
+        .waitForVisible(showAdsOption)
+        .click(showAdsOption)
+        .tabByIndex(0)
+        .waitUntil(function () {
+          // The connection to the websocket URL is allowed by adblock, so
+          // onerror fires only after the connection is attempted
+          return this.getText('#errorTime')
+            .then((time) => {
+              time = Number(time)
+              if (time > 0) {
+                time2 = time
+                return true
+              }
+              return false
+            })
+        })
+      // Assume blocking websockets is working if the time difference between
+      // onerror firing with adblock on vs off is sufficiently high.
+      assert(time2 - time1 > 100)
     })
     // TODO(bridiver) using slashdot won't provide reliable results so we should
     // create our own iframe page with urls we expect to be blocked

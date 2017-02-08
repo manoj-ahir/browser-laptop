@@ -401,6 +401,7 @@ class Main extends ImmutableComponent {
       windowActions.setActiveFrame(self.props.windowState.getIn(['frames', self.props.windowState.get('frames').size - 1])))
 
     ipc.on(messages.BLOCKED_RESOURCE, (e, blockType, details) => {
+      // XXX: ws and wss URLs have tabId -1 so frameProps is undefined
       const frameProps = frameStateUtil.getFrameByTabId(self.props.windowState, details.tabId)
       frameProps && windowActions.setBlockedBy(frameProps, blockType, details.url)
     })

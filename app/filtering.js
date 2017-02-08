@@ -568,11 +568,16 @@ function initForPartition (partition) {
   fns.forEach((fn) => { fn(ses, partition, module.exports.isPrivate(partition)) })
 }
 
-const filterableProtocols = ['http:', 'https:']
+const filterableProtocols = ['http:', 'https:', 'ws:', 'wss:']
 
 function shouldIgnoreUrl (details) {
+  if (typeof details.url !== 'string') {
+    return true
+  }
+
   // internal requests
-  if (details.tabId === -1) {
+  if (details.tabId === -1 &&
+    (details.url.startsWith('http://') || details.url.startsWith('https://'))) {
     return true
   }
 
@@ -737,6 +742,9 @@ module.exports.setDefaultZoomLevel = (zoom) => {
 module.exports.getMainFrameUrl = (details) => {
   if (details.resourceType === 'mainFrame') {
     return details.url
+  }
+  if (details.tabId === -1 && details.firstPartyUrl) {
+    return details.firstPartyUrl
   }
   const tab = webContents.fromTabID(details.tabId)
   if (tab && !tab.isDestroyed()) {
